@@ -333,9 +333,9 @@ set name Cozmo
 for i in 1..$rounds
   say Round $i for $name
   
-  # Parallel execution
-  anim-group DanceMambo async=true
-  play-sound name=music async=true
+  play-sound name=music 
+  anim-group DanceMambo 
+  
   
   # Wait for animation
   lights color=blue
