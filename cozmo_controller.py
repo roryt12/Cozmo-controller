@@ -351,7 +351,7 @@ class CozmoController:
             pitch: Pitch 0-99 (default: 50)
             amplitude: Amplitude 0-200 (default: 100)
             async_mode: If True, run in background thread
-            effect: Voice effect - "normal" or "duck" (Donald Duck-like)
+            effect: Voice effect - "normal" or "cozmo" (robot-like voice)
         """
         if not self.connected or not self.cli:
             print("Not connected to Cozmo")
@@ -392,14 +392,14 @@ class CozmoController:
 
                 # Apply effect using sox if requested
                 final_path = wav_path
-                if effect.lower() == "duck":
-                    # Donald Duck effect: pitch up + speed up + slight modulation
+                if effect.lower() == "cozmo":
+                    # Cozmo-like effect: pitch up + speed up for robot voice
                     sox_cmd = [
                         "sox", str(wav_path), str(processed_path),
-                        "pitch", "800",           # Pitch up (800 cents = 8 semitones)
-                        "speed", "1.15",          # Speed up 15%
-                        "gain", "-1",             # Slight volume reduction
-                        "contrast", "50"          # Enhance contrast
+                        "pitch", "600",           # Pitch up (600 cents = 6 semitones)
+                        "speed", "1.1",           # Speed up 10%
+                        "gain", "2",              # Slight volume boost
+                        "contrast", "30"          # Enhance contrast
                     ]
                     
                     result = subprocess.run(sox_cmd, capture_output=True, text=True)
@@ -407,7 +407,7 @@ class CozmoController:
                     if result.returncode == 0 and processed_path.exists():
                         final_path = processed_path
                         wav_path.unlink()  # Clean up original
-                        print(f"Applied duck effect to speech")
+                        print(f"Applied cozmo voice effect")
                     else:
                         print(f"Sox effect failed, using normal voice: {result.stderr}")
 
@@ -1404,6 +1404,7 @@ class CommandParser:
         print('  python3 cozmo_controller.py "ir enable=false"')
         print('  python3 cozmo_controller.py "calibrate head=true lift=true"')
         print('  python3 cozmo_controller.py "say Guten Tag voice=de speed=120"')
+        print('  python3 cozmo_controller.py "say Hello effect=cozmo"')
         print('  python3 cozmo_controller.py "animate anim_bored_01"')
         print('  python3 cozmo_controller.py "anim-group CodeLabChicken"')
         print('  python3 cozmo_controller.py "head up" "head middle" "head down"')

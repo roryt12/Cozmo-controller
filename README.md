@@ -120,9 +120,8 @@ During development, several bugs were discovered in pycozmo that prevented prope
 5. **vgmstream-cli** for WEM audio files:
    ```bash
    # Build from source: https://github.com/vgmstream/vgmstream
-   sudo make install
    ```
-5. Last but not least, pycozmo library, original or patched
+5. Last but not least, pycozmo library, original or the patched I have in github (https://github.com/roryt12/pycozmo)
 
 
 ### Download Assets
@@ -223,13 +222,13 @@ python3 cozmo_controller.py --script myscript.txt
 
 **Voice Effects:**
 - `effect=normal` (default) - Standard TTS voice
-- `effect=duck` - Duck-like effect (higher pitch, faster)
+- `effect=cozmo` - Robot-like voice (higher pitch, faster)
 
 Requires sox: `sudo apt install sox`
 
 Example:
 ```bash
-python3 cozmo_controller.py "say Hello effect=duck"
+python3 cozmo_controller.py "say Hello effect=cozmo"
 ```
 
 ### Animation
