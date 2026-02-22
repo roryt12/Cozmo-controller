@@ -1,6 +1,6 @@
 # Cozmo Robot Controller
 
-A comprehensive Python controller for the Anki Cozmo (version 1) robot, built on [ a patched version of pycozmo](https://github.com/roryt12/pycozmo) with extended scripting language.
+A comprehensive Python controller for the [Anki Cozmo](https://anki.bot/pages/meet-cozmo) robot, built on [pycozmo](https://github.com/zayfod/pycozmo) with custom patches and an extended scripting language.
 
 ## About Cozmo
 
@@ -30,7 +30,7 @@ A comprehensive Python controller for the Anki Cozmo (version 1) robot, built on
 
 ### My story
 
-I bought Cozmo ver 1, back at 2016 or 2017 because my younger son has seen it on Internet and he liked it. By the time I had the impression that this will be a great reason to introduce him to programming and robotics (he was 10 years old). But after playing with it for a while, he realized that - although it is intresting-  his is not interested. Oh GOD!, I would loved to have something like this, plus all the tools and languages and platforms that are now available, back at start of 80's when I was a teenager. Anyway, fast forward 10 years after, the robot accumilated dust, and I decided to give it a try............
+I bought Cozmo ver 1, back at 2016 or 2017 because my younger son has seen it on Internet and he liked it. By the time I had the impression that this will be a great reason to introduce him to programming and robotics (he was 10 years old). But after playing with it for a while, he realized that - although it is intresting-  his is not interested. Oh GOD!, I would loved to have something like this, plus all the tools and languages and platforms that are now available, back at start of 80's when I was a teenager. Anyway, fast forward 10 years after, the root accumilated dust, and I decided to give it a try............
 
 ---
 
@@ -123,7 +123,7 @@ During development, several bugs were discovered in pycozmo that prevented prope
 
 ### Download Assets
 
-On first run pycozmo will download Cozmo assets (~500MB) to `~/.pycozmo/assets/`, or I think so - I do not remember. If not, you can always use the pycozmo_resources.py script, included in the library.
+On first run, pycozmo will download Cozmo assets (~500MB) to `~/.pycozmo/assets/`.
 
 ---
 
@@ -183,6 +183,7 @@ python3 cozmo_controller.py --script myscript.txt
 | `connect` | Connect to robot |
 | `status` | Show robot status |
 | `wait` | Wait for robot to stabilize |
+| `sleep` | `<duration>` | - | Pause execution (seconds) |
 
 ### Movement
 
@@ -220,11 +221,23 @@ python3 cozmo_controller.py --script myscript.txt
 
 | Command | Args | Options | Description |
 |---------|------|---------|-------------|
-| `animate` | `<name>` | `async=false` | Play animation |
-| `anim-group` | `<group>` | `async=false` | Play animation group |
+| `animate` | `<name>` | `async=false`, `wait=2.0` | Play animation |
+| `anim-group` | `<group>` | `async=false`, `wait=2.0` | Play animation group |
 | `list-anims` | - | `search=...` | List animations (offline) |
 | `list-groups` | - | `search=...` | List groups (offline) |
 | `list-sounds` | - | `search=...` | List sounds (offline) |
+
+**Animation Wait Parameter:**
+- `wait=2.0` (default) - Block for 2 seconds after starting
+- `wait=0` - Don't wait, continue immediately (use with `sleep`)
+- `wait=5` - Block for 5 seconds
+
+Example for long animations:
+```
+anim-group DanceMambo wait=0
+sleep 5
+lights color=blue
+```
 
 ### Display & Camera
 
@@ -315,6 +328,15 @@ enddef
 call announce Important message
 ```
 
+### Delays
+
+```
+say Starting
+sleep 3              # Wait 3 seconds
+say Three seconds later
+sleep 0.5            # Wait half a second
+```
+
 ### Includes
 
 ```
@@ -333,12 +355,12 @@ set name Cozmo
 for i in 1..$rounds
   say Round $i for $name
   
+  # Sequential execution with timing control
   play-sound name=music
   sleep 1
-  anim-group DanceMambo wait=20
-  sleep 1
+  anim-group DanceMambo wait=0
+  sleep 5
   
-  # Wait for animation
   lights color=blue
 endfor
 
@@ -373,7 +395,7 @@ head up
 say there was a little robot
 lights color=blue
 
-anim-group DanceMambo async=true
+anim-group DanceMambo wait=0
 say who loved to dance!
 ```
 
