@@ -460,7 +460,7 @@ say Battery status displayed on screen
 2. **Audio Channel**: Single channel - animations with sound will interrupt
 3. **Procedural Face**: Must be disabled for custom screen content
 4. **Async Audio**: Robot must stay connected until audio transmits
-5. **Cubes**: I need to chnage batteries, o far I have not worked on cubes at all.
+5. **Cubes**: I need to change batteries, so far I have not worked on cubes at all.
 
 ---
 
