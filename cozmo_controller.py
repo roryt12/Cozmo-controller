@@ -32,6 +32,7 @@ import os
 import subprocess
 import shutil
 import threading
+import uuid
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
@@ -356,7 +357,9 @@ class CozmoController:
 
         def _play():
             try:
-                wav_path = self.tts_dir / f"speech_{int(time.time())}.wav"
+                # Use counter + timestamp for unique filenames
+                import uuid
+                wav_path = self.tts_dir / f"speech_{int(time.time())}_{uuid.uuid4().hex[:8]}.wav"
 
                 speed_val = max(80, min(450, speed))
                 pitch_val = max(0, min(99, pitch))
@@ -692,13 +695,14 @@ class CozmoController:
             print(f"Error waiting for robot: {e}")
             return False
 
-    def play_anim_group(self, group_name: str = "CodeLabBored", async_mode: bool = False):
+    def play_anim_group(self, group_name: str = "CodeLabBored", async_mode: bool = False, wait: float = 2.0):
         """Play an animation group (plays a random animation from the group).
 
         Args:
             group_name: Name of animation group 
                           (e.g., "CodeLabBored", "CodeLabChicken", "DanceMambo", "FistBumpSuccess")
             async_mode: If True, run in background thread
+            wait: Seconds to wait for animation (default 2.0, use 0 for no wait)
         """
         if not self.connected:
             return False
@@ -708,7 +712,8 @@ class CozmoController:
                 if not self.anims_loaded:
                     self.load_animations()
                 self.cli.play_anim_group(group_name)
-                time.sleep(2.0)
+                if wait > 0:
+                    time.sleep(wait)
             except Exception as e:
                 print(f"Error playing animation group: {e}")
 
@@ -720,12 +725,13 @@ class CozmoController:
             _play()
         return True
 
-    def play_animation(self, anim_name: str = "anim_bored_01", async_mode: bool = False):
+    def play_animation(self, anim_name: str = "anim_bored_01", async_mode: bool = False, wait: float = 2.0):
         """Play an animation.
         
         Args:
             anim_name: Name of animation to play
             async_mode: If True, run in background thread
+            wait: Seconds to wait for animation (default 2.0, use 0 for no wait)
         """
         if not self.connected:
             return False
@@ -735,7 +741,8 @@ class CozmoController:
                 if not self.anims_loaded:
                     self.load_animations()
                 self.cli.play_anim(anim_name)
-                time.sleep(2.0)
+                if wait > 0:
+                    time.sleep(wait)
             except Exception as e:
                 print(f"Error playing animation: {e}")
 
@@ -865,7 +872,7 @@ class CozmoController:
         
         def _play():
             try:
-                temp_wav = self.tts_dir / f"sound_{int(time.time())}.wav"
+                temp_wav = self.tts_dir / f"sound_{int(time.time())}_{uuid.uuid4().hex[:8]}.wav"
                 
                 if file:
                     file_path = Path(file)
@@ -928,7 +935,7 @@ class CozmoController:
                         print(f"WEM file not found for sound {file_id}")
                         return
                     
-                    temp_raw = self.tts_dir / f"sound_{int(time.time())}_raw.wav"
+                    temp_raw = self.tts_dir / f"sound_{int(time.time())}_{uuid.uuid4().hex[:8]}_raw.wav"
                     
                     result = subprocess.run(
                         ['vgmstream-cli', '-o', str(temp_raw), str(wem_path)],
@@ -1235,6 +1242,11 @@ class CommandParser:
             'args': [],
             'opts': {}
         },
+        'sleep': {
+            'desc': 'Pause execution',
+            'args': ['duration'],
+            'opts': {}
+        },
         'say': {
             'desc': 'Text-to-speech',
             'args': ['text'],
@@ -1295,12 +1307,12 @@ class CommandParser:
         'animate': {
             'desc': 'Play animation',
             'args': ['name'],
-            'opts': {'async': False}
+            'opts': {'async': False, 'wait': 2.0}
         },
         'anim-group': {
             'desc': 'Play animation group',
             'args': ['group'],
-            'opts': {'async': False}
+            'opts': {'async': False, 'wait': 2.0}
         },
         'list-anims': {
             'desc': 'List available animations',
@@ -1541,6 +1553,11 @@ def execute_command(controller, cmd, args, opts):
     elif cmd == 'wait':
         return controller.wait_for_robot()
     
+    elif cmd == 'sleep':
+        duration = float(args[0])
+        time.sleep(duration)
+        return True
+    
     elif cmd == 'say':
         text = ' '.join(args)
         volume = int(opts.get('volume', 65535))
@@ -1633,12 +1650,14 @@ def execute_command(controller, cmd, args, opts):
     elif cmd == 'animate':
         name = args[0]
         async_mode = opts.get('async', False)
-        return controller.play_animation(name, async_mode=async_mode)
+        wait = float(opts.get('wait', 2.0))
+        return controller.play_animation(name, async_mode=async_mode, wait=wait)
     
     elif cmd == 'anim-group':
         group = args[0]
         async_mode = opts.get('async', False)
-        return controller.play_anim_group(group, async_mode=async_mode)
+        wait = float(opts.get('wait', 2.0))
+        return controller.play_anim_group(group, async_mode=async_mode, wait=wait)
     
     elif cmd == 'list-anims':
         search = opts.get('search')
@@ -1932,6 +1951,9 @@ class ScriptInterpreter:
         
         var_name = match.group(1)
         values_str = match.group(2).strip()
+        
+        # Expand variables in range/list first
+        values_str = self._expand_variables(values_str)
         
         # Parse values
         values = []
