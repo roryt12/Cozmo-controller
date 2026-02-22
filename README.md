@@ -1,6 +1,6 @@
 # Cozmo Robot Controller
 
-A comprehensive Python controller for the [Anki Cozmo](https://anki.bot/pages/meet-cozmo) robot (but version 1), built on [pycozmo](https://github.com/zayfod/pycozmo) with custom patches and an extended scripting language.
+A comprehensive Python controller for the [Anki Cozmo](https://anki.bot/pages/meet-cozmo) robot (version 1), built on a [patched version of pycozmo](https://github.com/roryt12/pycozmo) with an extended scripting language.
 
 ## About Cozmo
 
@@ -36,12 +36,14 @@ I bought Cozmo ver 1, back at 2016 or 2017 because my younger son has seen it on
 
 ## About pycozmo
 
+This controller uses a **patched version of pycozmo** ([roryt12/pycozmo](https://github.com/roryt12/pycozmo)), which is forked from the original [zayfod/pycozmo](https://github.com/zayfod/pycozmo). The patches fix several bugs that prevented proper robot operation.
+
 **pycozmo** is a pure-Python communication library that provides an alternative SDK for Cozmo. Unlike the official Anki SDK, pycozmo:
 
 - **No mobile device required**: Connects directly to Cozmo via WiFi
 - **No cloud dependency**: Works completely offline
 - **Low-level access**: Direct protocol communication
-- **Open source**: Hosted on [GitHub](https://github.com/zayfod/pycozmo)
+- **Open source**: Based on [zayfod/pycozmo](https://github.com/zayfod/pycozmo)
 
 The library is based on reverse-engineering of the Cozmo protocol and provides access to:
 - Motor control (wheels, lift, head)
@@ -51,13 +53,40 @@ The library is based on reverse-engineering of the Cozmo protocol and provides a
 - Animation playback
 - Sensor data
 
-> **Note**: The project is described by its author as "unstable and heavily under development."
+> **Note**: The original project is described by its author as "unstable and heavily under development."
 
 ---
 
 ## pycozmo Patches
 
-During development, several bugs were discovered in pycozmo that prevented proper robot operation. These patches are **required** for my controller to work correctly. Your mileage may vary depending on your Cozmo's firmware version - i just do not know. I have the very first robot, the one without the button, era 2016 or 2017. I heavily used tcpdump to sniff and reverse engineer the communication between the android app (I have version 3.4 installed) and the Robot. Please see https://github.com/roryt12/pycozmo , this is the patched version I use. Again, YMMV.
+This controller requires a **patched version of pycozmo**. The original library has several bugs that prevent proper robot operation. The patched version is available at:
+
+**https://github.com/roryt12/pycozmo**
+
+### Required Patches
+
+The following patches are included in the forked repository:
+
+1. **Protocol Buffer Size Fix** (`protocol_encoder.py`) - Fixes `AcknowledgeAction` packet size mismatch
+2. **u-law Audio Encoding Fix** (`audio.py`) - Prevents byte overflow in audio encoding
+3. **Procedural Face Rendering Fix** (`procedural_face.py`) - Fixes "y1 must be greater than or equal to y0" error with animations that have invalid face keyframes
+4. **Client Initialization Fixes** (`client.py`) - Various connection stability improvements
+
+### Installation
+
+Clone and install the patched version:
+
+```bash
+git clone https://github.com/roryt12/pycozmo.git
+cd pycozmo
+pip install --user -e .
+```
+
+### Compatibility
+
+- **Tested on**: Cozmo version 1 (2016-2017, without button)
+- **Firmware**: Compatible with firmware from Android app version 3.4
+- **Your mileage may vary**: Different firmware versions may behave differently
 
 ---
 
@@ -517,8 +546,10 @@ python3 cozmo_controller.py "list-groups duration=true"
 ## Credits
 
 - **Anki / Digital Dream Labs** - Cozmo robot
-- **zayfod** - [pycozmo library](https://github.com/zayfod/pycozmo)
-- **vgmstream** - WEM audio decoding
+- **zayfod** - [Original pycozmo library](https://github.com/zayfod/pycozmo)
+- **vgmstream** - [WEM audio decoding](https://github.com/vgmstream/vgmstream)
+- **ffmpeg** - Audio conversion
+- **sox** - Voice effects processing
 
 ---
 
