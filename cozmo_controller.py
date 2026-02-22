@@ -337,7 +337,8 @@ class CozmoController:
             return False
 
     def say_text(self, text: str, volume: int = 65535, voice: str = "en-us",
-                 speed: int = 150, pitch: int = 50, amplitude: int = 100, async_mode: bool = False) -> bool:
+                 speed: int = 150, pitch: int = 50, amplitude: int = 100, 
+                 async_mode: bool = False, effect: str = "normal") -> bool:
         """Generate speech using espeak and play it on Cozmo.
 
         TTS happens inside this script using espeak.
@@ -350,6 +351,7 @@ class CozmoController:
             pitch: Pitch 0-99 (default: 50)
             amplitude: Amplitude 0-200 (default: 100)
             async_mode: If True, run in background thread
+            effect: Voice effect - "normal" or "duck" (Donald Duck-like)
         """
         if not self.connected or not self.cli:
             print("Not connected to Cozmo")
@@ -359,12 +361,15 @@ class CozmoController:
             try:
                 # Use counter + timestamp for unique filenames
                 import uuid
-                wav_path = self.tts_dir / f"speech_{int(time.time())}_{uuid.uuid4().hex[:8]}.wav"
+                base_name = f"speech_{int(time.time())}_{uuid.uuid4().hex[:8]}"
+                wav_path = self.tts_dir / f"{base_name}.wav"
+                processed_path = self.tts_dir / f"{base_name}_processed.wav"
 
                 speed_val = max(80, min(450, speed))
                 pitch_val = max(0, min(99, pitch))
                 amp_val = max(0, min(200, amplitude))
 
+                # Generate base TTS with espeak
                 cmd = [
                     ESPEAK_CMD,
                     "-v", voice,
@@ -381,21 +386,43 @@ class CozmoController:
                     print(f"Error generating TTS: {result.stderr}")
                     return
 
-                self.set_volume(volume)
-                time.sleep(0.2)
-
                 if not wav_path.exists():
                     print(f"Error: WAV file not created: {wav_path}")
                     return
 
-                file_size = wav_path.stat().st_size
-                print(f"Generated audio: {file_size} bytes (voice={voice}, speed={speed_val}, pitch={pitch_val})")
+                # Apply effect using sox if requested
+                final_path = wav_path
+                if effect.lower() == "duck":
+                    # Donald Duck effect: pitch up + speed up + slight modulation
+                    sox_cmd = [
+                        "sox", str(wav_path), str(processed_path),
+                        "pitch", "800",           # Pitch up (800 cents = 8 semitones)
+                        "speed", "1.15",          # Speed up 15%
+                        "gain", "-1",             # Slight volume reduction
+                        "contrast", "50"          # Enhance contrast
+                    ]
+                    
+                    result = subprocess.run(sox_cmd, capture_output=True, text=True)
+                    
+                    if result.returncode == 0 and processed_path.exists():
+                        final_path = processed_path
+                        wav_path.unlink()  # Clean up original
+                        print(f"Applied duck effect to speech")
+                    else:
+                        print(f"Sox effect failed, using normal voice: {result.stderr}")
+
+                self.set_volume(volume)
+                time.sleep(0.2)
+
+                file_size = final_path.stat().st_size
+                effect_str = f" ({effect})" if effect.lower() != "normal" else ""
+                print(f"Generated audio: {file_size} bytes (voice={voice}, speed={speed_val}, pitch={pitch_val}){effect_str}")
 
                 import wave
-                with wave.open(str(wav_path), 'r') as w:
+                with wave.open(str(final_path), 'r') as w:
                     duration = w.getnframes() / w.getframerate()
                 
-                self.cli.play_audio(str(wav_path))
+                self.cli.play_audio(str(final_path))
                 print(f"Saying: {text}")
                 print(f"Audio duration: {duration:.1f}s")
                 time.sleep(duration + 0.5)
@@ -1250,7 +1277,7 @@ class CommandParser:
         'say': {
             'desc': 'Text-to-speech',
             'args': ['text'],
-            'opts': {'volume': 65535, 'voice': 'en-us', 'speed': 150, 'pitch': 50, 'amplitude': 100, 'async': False},
+            'opts': {'volume': 65535, 'voice': 'en-us', 'speed': 150, 'pitch': 50, 'amplitude': 100, 'async': False, 'effect': 'normal'},
             'varargs': True
         },
         'volume': {
@@ -1566,7 +1593,8 @@ def execute_command(controller, cmd, args, opts):
         pitch = int(opts.get('pitch', 50))
         amplitude = int(opts.get('amplitude', 100))
         async_mode = opts.get('async', False)
-        return controller.say_text(text, volume=volume, voice=voice, speed=speed, pitch=pitch, amplitude=amplitude, async_mode=async_mode)
+        effect = opts.get('effect', 'normal')
+        return controller.say_text(text, volume=volume, voice=voice, speed=speed, pitch=pitch, amplitude=amplitude, async_mode=async_mode, effect=effect)
     
     elif cmd == 'volume':
         level = int(args[0])

@@ -109,11 +109,15 @@ During development, several bugs were discovered in pycozmo that prevented prope
    ```bash
    sudo apt install espeak
    ```
-3. **ffmpeg** for audio conversion:
+3. **sox** for voice effects (optional):
+   ```bash
+   sudo apt install sox
+   ```
+4. **ffmpeg** for audio conversion:
    ```bash
    sudo apt install ffmpeg
    ```
-4. **vgmstream-cli** for WEM audio files:
+5. **vgmstream-cli** for WEM audio files:
    ```bash
    # Build from source: https://github.com/vgmstream/vgmstream
    sudo make install
@@ -213,9 +217,20 @@ python3 cozmo_controller.py --script myscript.txt
 
 | Command | Args | Options | Description |
 |---------|------|---------|-------------|
-| `say` | `<text>` | `voice=en-us`, `speed=150`, `pitch=50`, `amplitude=100`, `async=false` | Text-to-speech |
+| `say` | `<text>` | `voice=en-us`, `speed=150`, `pitch=50`, `amplitude=100`, `async=false`, `effect=normal` | Text-to-speech |
 | `play-sound` | - | `name=...`, `file=...`, `async=false` | Play sound |
 | `volume` | `<level>` | - | Set volume (0-65535) |
+
+**Voice Effects:**
+- `effect=normal` (default) - Standard TTS voice
+- `effect=duck` - Donald Duck-like effect (higher pitch, faster)
+
+Requires sox: `sudo apt install sox`
+
+Example:
+```bash
+python3 cozmo_controller.py "say Hello effect=duck"
+```
 
 ### Animation
 
