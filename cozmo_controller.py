@@ -617,6 +617,7 @@ class CozmoController:
     def move_forward(self, distance_mm: float = 100, speed_mmps: float = 100, async_mode: bool = False):
         """Move Cozmo forward."""
         duration = distance_mm / speed_mmps
+        print(f"Moving forward {distance_mm}mm ({duration:.1f}s at {speed_mmps}mm/s)")
         return self.drive_wheels(speed_mmps, speed_mmps, duration, async_mode)
 
     def move_backward(self, distance_mm: float = 100, speed_mmps: float = 100, async_mode: bool = False):
@@ -635,12 +636,32 @@ class CozmoController:
             return False
 
         try:
-            duration = abs(angle_degrees) / 90.0
-            speed = 100 if angle_degrees > 0 else -100
+            duration = abs(angle_degrees) / 90.0  # ~1 second per 90 degrees
+            speed = 100
+            
+            print(f"Turning {angle_degrees} degrees ({duration:.1f}s)")
             
             if angle_degrees > 0:
                 self.drive_wheels(-speed, speed, duration, async_mode)
             else:
+                self.drive_wheels(speed, -speed, duration, async_mode)
+            return True
+        except Exception as e:
+            print(f"Error turning: {e}")
+            return False
+
+        try:
+            # Calibrated: ~1.5 seconds for 90 degrees at speed 100
+            duration = abs(angle_degrees) * 1.5 / 90.0
+            speed = 100
+            
+            print(f"Turning {angle_degrees} degrees ({duration:.1f}s)")
+            
+            if angle_degrees > 0:
+                # Turn left: left wheel backward, right wheel forward
+                self.drive_wheels(-speed, speed, duration, async_mode)
+            else:
+                # Turn right: left wheel forward, right wheel backward
                 self.drive_wheels(speed, -speed, duration, async_mode)
             return True
         except Exception as e:
@@ -1741,9 +1762,8 @@ def execute_command(controller, cmd, args, opts):
     
     elif cmd == 'turn':
         angle = float(args[0])
-        angle_rad = angle * 3.14159 / 180.0
         async_mode = opts.get('async', False)
-        return controller.turn_to_angle(angle_rad, async_mode=async_mode)
+        return controller.turn_in_place(angle, async_mode=async_mode)
     
     elif cmd == 'goto':
         x = float(args[0])
