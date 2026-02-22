@@ -30,7 +30,7 @@ A comprehensive Python controller for the [Anki Cozmo](https://anki.bot/pages/me
 
 ### My story
 
-I bought Cozmo ver 1, back at 2016 or 2017 because my younger son has seen it on Internet and he liked it. By the time I had the impression that this will be a great reason to introduce him to programming and robotics (he was 10 years old). But after playing with it for a while, he realized that - although it is intresting-  his is not interested. Oh GOD!, I would loved to have something like this, plus all the tools and languages and platforms that are now available, back at start of 80's when I was a teenager. Anyway, fast forward 10 years after, the root accumilated dust, and I decided to give it a try............
+I bought Cozmo ver 1, back at 2016 or 2017 because my younger son has seen it on Internet and he liked it. By the time I had the impression that this will be a great reason to introduce him to programming and robotics (he was 10 years old). But after playing with it for a while, he realized that - although it is intresting-  his is not interested. Oh GOD!, I would loved to have something like this, plus all the tools and languages and platforms that are now available, back at start of 80's when I was a teenager. Anyway, fast forward 10 years after, the robot accumilated dust, and I decided to give it a try............
 
 ---
 
