@@ -1,6 +1,6 @@
 # Cozmo Robot Controller
 
-A comprehensive Python controller for the Anki Cozmo (version 1) robot, built on [ a patched version of pycozmo](https://github.com/roryt12/pycozmo) with custom patches and an extended scripting language.
+A comprehensive Python controller for the Anki Cozmo (version 1) robot, built on [ a patched version of pycozmo](https://github.com/roryt12/pycozmo) with extended scripting language.
 
 ## About Cozmo
 
