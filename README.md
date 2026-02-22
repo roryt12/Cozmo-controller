@@ -235,22 +235,36 @@ python3 cozmo_controller.py "say Hello effect=cozmo"
 
 | Command | Args | Options | Description |
 |---------|------|---------|-------------|
-| `animate` | `<name>` | `async=false`, `wait=2.0` | Play animation |
-| `anim-group` | `<group>` | `async=false`, `wait=2.0` | Play animation group |
-| `list-anims` | - | `search=...` | List animations (offline) |
-| `list-groups` | - | `search=...` | List groups (offline) |
+| `animate` | `<name>` | `async=false`, `wait=auto` | Play animation |
+| `anim-group` | `<group>` | `async=false`, `wait=auto` | Play animation group |
+| `list-anims` | - | `search=...`, `duration=false` | List animations (offline) |
+| `list-groups` | - | `search=...`, `duration=false` | List groups (offline) |
 | `list-sounds` | - | `search=...` | List sounds (offline) |
 
 **Animation Wait Parameter:**
-- `wait=2.0` (default) - Block for 2 seconds after starting
+- `wait=auto` (default) - Automatically compute duration from animation file
 - `wait=0` - Don't wait, continue immediately (use with `sleep`)
-- `wait=5` - Block for 5 seconds
+- `wait=5` - Wait for specified seconds
 
-Example for long animations:
+The controller reads the animation file and calculates the exact duration from the keyframes. For example, `DanceMambo` automatically waits ~15.4 seconds.
+
+Example for custom timing:
 ```
 anim-group DanceMambo wait=0
 sleep 5
 lights color=blue
+```
+
+**Listing with Durations:**
+```bash
+# Show animation durations
+python3 cozmo_controller.py "list-anims duration=true"
+
+# Search and show durations
+python3 cozmo_controller.py "list-anims search=dance duration=true"
+
+# Show group durations with member counts
+python3 cozmo_controller.py "list-groups duration=true"
 ```
 
 ### Display & Camera
@@ -369,12 +383,8 @@ set name Cozmo
 for i in 1..$rounds
   say Round $i for $name
   
-  # Sequential execution with timing control
-  play-sound name=music
-  sleep 1
-  anim-group DanceMambo wait=0
-  sleep 5
-  
+  # Animation auto-waits for its duration (~15s for DanceMambo)
+  anim-group DanceMambo
   lights color=blue
 endfor
 
@@ -409,7 +419,7 @@ head up
 say there was a little robot
 lights color=blue
 
-anim-group DanceMambo wait=0
+anim-group DanceMambo
 say who loved to dance!
 ```
 
@@ -419,6 +429,32 @@ say who loved to dance!
 # battery_check.txt
 battery mode=text
 say Battery status displayed on screen
+```
+
+### Listing Animations with Durations
+
+```bash
+# List all animations with their durations
+python3 cozmo_controller.py "list-anims duration=true"
+
+# Output:
+# Available animations (993 total):
+#   Name                                               Duration
+#   -------------------------------------------------- ----------
+#   anim_bored_01                                          2.1s
+#   anim_dancing_mambo_01                                 15.4s
+#   anim_greeting_01                                       3.5s
+
+# List groups with average durations
+python3 cozmo_controller.py "list-groups duration=true"
+
+# Output:
+# Available animation groups (573 total):
+#   Name                                               Avg Duration  Members
+#   -------------------------------------------------- ---------- --------
+#   CodeLabBored                                            3.2s        5
+#   DanceMambo                                             15.4s        1
+#   FistBumpSuccess                                         2.8s        3
 ```
 
 ---

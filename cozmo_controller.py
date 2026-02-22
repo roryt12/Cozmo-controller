@@ -40,7 +40,7 @@ try:
     import pycozmo
     import numpy as np
     from PIL import Image, ImageDraw, ImageFont
-    from pycozmo import protocol_encoder, lights, event
+    from pycozmo import protocol_encoder, lights, event, anim
     from pycozmo.expressions import Happiness, Sadness, Anger, Surprise, Neutral
 except ImportError as e:
     print(f"Error: pycozmo not installed. Run: pip install --user pycozmo")
@@ -75,6 +75,9 @@ class CozmoController:
         self._cliff_enabled = True
         self._cliff_reaction = self.CLIFF_REACTION_BACKUP  # stop, backup, animate, none
         self._cliff_detected = False
+        
+        # Animation duration cache
+        self._anim_durations = {}  # Cache for animation durations
 
         # TTS audio directory
         self.tts_dir = Path.home() / ".cozmo" / "tts"
@@ -317,6 +320,106 @@ class CozmoController:
         except Exception as e:
             print(f"Error loading animations: {e}")
             return False
+
+    def get_animation_duration(self, anim_name: str) -> float:
+        """Get the duration of an animation in seconds.
+        
+        Loads animation file and computes duration from keyframes.
+        Results are cached for subsequent calls.
+        
+        Args:
+            anim_name: Name of the animation (e.g., "anim_dancing_mambo_01")
+        
+        Returns:
+            Duration in seconds, or 2.0 as default if unknown
+        """
+        # Check cache first
+        if anim_name in self._anim_durations:
+            return self._anim_durations[anim_name]
+        
+        try:
+            # Ensure animation metadata is loaded
+            if not self._clip_metadata:
+                pycozmo.util.check_assets()
+                anim_dir = str(pycozmo.util.get_cozmo_anim_dir())
+                self._clip_metadata = pycozmo.anim_encoder.get_clip_metadata(anim_dir)
+            
+            # Find the animation file
+            if anim_name not in self._clip_metadata:
+                return 2.0  # Default duration
+            
+            meta = self._clip_metadata[anim_name]
+            fspec = meta.fspec
+            
+            if not os.path.exists(fspec):
+                return 2.0  # Default duration
+            
+            # Load animation file
+            clips = pycozmo.anim_encoder.AnimClips.from_fb_file(fspec)
+            
+            # Find the clip with matching name and compute duration
+            for clip in clips.clips:
+                if clip.name == anim_name and clip.keyframes:
+                    # Get max timestamp from keyframes
+                    max_time_ms = max(kf.trigger_time_ms for kf in clip.keyframes)
+                    duration = max_time_ms / 1000.0
+                    # Cache the result
+                    self._anim_durations[anim_name] = duration
+                    return duration
+            
+            return 2.0  # Default if no keyframes found
+            
+        except Exception as e:
+            return 2.0  # Default duration on error
+
+    def get_anim_group_duration(self, group_name: str) -> float:
+        """Get the duration of an animation group in seconds.
+        
+        Animation groups play a random animation, so we compute
+        the average duration of all animations in the group.
+        
+        Args:
+            group_name: Name of the animation group (e.g., "DanceMambo")
+        
+        Returns:
+            Duration in seconds, or 2.0 as default if unknown
+        """
+        # Check cache first
+        cache_key = f"group:{group_name}"
+        if cache_key in self._anim_durations:
+            return self._anim_durations[cache_key]
+        
+        try:
+            # Ensure animation groups are loaded
+            if not self._animation_groups:
+                if not self.anims_loaded:
+                    self.load_animations()
+                resource_dir = pycozmo.util.get_cozmo_asset_dir()
+                self._animation_groups = pycozmo.anim.load_animation_groups(str(resource_dir))
+            
+            # Find the group
+            if group_name not in self._animation_groups:
+                return 2.0  # Default duration
+            
+            group = self._animation_groups[group_name]
+            
+            # Get durations of all animations in the group
+            durations = []
+            for member in group.members:
+                duration = self.get_animation_duration(member.name)
+                if duration > 0:
+                    durations.append(duration)
+            
+            if durations:
+                # Use average duration
+                avg_duration = sum(durations) / len(durations)
+                self._anim_durations[cache_key] = avg_duration
+                return avg_duration
+            
+            return 2.0  # Default if no animations found
+            
+        except Exception as e:
+            return 2.0  # Default duration on error
 
     def set_volume(self, level: int = 65535):
         """Set robot volume level.
@@ -722,17 +825,22 @@ class CozmoController:
             print(f"Error waiting for robot: {e}")
             return False
 
-    def play_anim_group(self, group_name: str = "CodeLabBored", async_mode: bool = False, wait: float = 2.0):
+    def play_anim_group(self, group_name: str = "CodeLabBored", async_mode: bool = False, wait: float = None):
         """Play an animation group (plays a random animation from the group).
 
         Args:
             group_name: Name of animation group 
                           (e.g., "CodeLabBored", "CodeLabChicken", "DanceMambo", "FistBumpSuccess")
             async_mode: If True, run in background thread
-            wait: Seconds to wait for animation (default 2.0, use 0 for no wait)
+            wait: Seconds to wait for animation (None=auto-compute from file, 0=no wait, >0=specified wait)
         """
         if not self.connected:
             return False
+
+        # Auto-compute duration if not specified
+        if wait is None:
+            wait = self.get_anim_group_duration(group_name)
+            print(f"  (auto wait: {wait:.1f}s)")
 
         def _play():
             try:
@@ -752,16 +860,21 @@ class CozmoController:
             _play()
         return True
 
-    def play_animation(self, anim_name: str = "anim_bored_01", async_mode: bool = False, wait: float = 2.0):
+    def play_animation(self, anim_name: str = "anim_bored_01", async_mode: bool = False, wait: float = None):
         """Play an animation.
         
         Args:
             anim_name: Name of animation to play
             async_mode: If True, run in background thread
-            wait: Seconds to wait for animation (default 2.0, use 0 for no wait)
+            wait: Seconds to wait for animation (None=auto-compute from file, 0=no wait, >0=specified wait)
         """
         if not self.connected:
             return False
+
+        # Auto-compute duration if not specified
+        if wait is None:
+            wait = self.get_animation_duration(anim_name)
+            print(f"  (auto wait: {wait:.1f}s)")
 
         def _play():
             try:
@@ -781,11 +894,12 @@ class CozmoController:
             _play()
         return True
 
-    def list_animations(self, search: str = None):
+    def list_animations(self, search: str = None, show_duration: bool = False):
         """List available animations.
         
         Args:
             search: Optional filter string to search animation names
+            show_duration: If True, compute and display animation duration
         """
         try:
             # Load animation metadata if not loaded
@@ -801,19 +915,27 @@ class CozmoController:
                 names = [n for n in names if search in n.lower()]
             
             print(f"Available animations ({len(names)} total):")
-            for name in names:
-                print(f"  {name}")
+            if show_duration:
+                print(f"  {'Name':<50s} {'Duration':>10s}")
+                print(f"  {'-'*50} {'-'*10}")
+                for name in names:
+                    duration = self.get_animation_duration(name)
+                    print(f"  {name:<50s} {duration:>9.1f}s")
+            else:
+                for name in names:
+                    print(f"  {name}")
             
             return True
         except Exception as e:
             print(f"Error listing animations: {e}")
             return False
 
-    def list_animation_groups(self, search: str = None):
+    def list_animation_groups(self, search: str = None, show_duration: bool = False):
         """List available animation groups.
         
         Args:
             search: Optional filter string to search group names
+            show_duration: If True, compute and display average group duration
         """
         try:
             # Load animation groups if not loaded
@@ -829,8 +951,16 @@ class CozmoController:
                 names = [n for n in names if search in n.lower()]
             
             print(f"Available animation groups ({len(names)} total):")
-            for name in names:
-                print(f"  {name}")
+            if show_duration:
+                print(f"  {'Name':<50s} {'Avg Duration':>10s} {'Members':>8s}")
+                print(f"  {'-'*50} {'-'*10} {'-'*8}")
+                for name in names:
+                    duration = self.get_anim_group_duration(name)
+                    num_members = len(self._animation_groups[name].members)
+                    print(f"  {name:<50s} {duration:>9.1f}s {num_members:>8d}")
+            else:
+                for name in names:
+                    print(f"  {name}")
             
             return True
         except Exception as e:
@@ -1334,22 +1464,22 @@ class CommandParser:
         'animate': {
             'desc': 'Play animation',
             'args': ['name'],
-            'opts': {'async': False, 'wait': 2.0}
+            'opts': {'async': False, 'wait': None}  # None = auto-compute duration
         },
         'anim-group': {
             'desc': 'Play animation group',
             'args': ['group'],
-            'opts': {'async': False, 'wait': 2.0}
+            'opts': {'async': False, 'wait': None}  # None = auto-compute duration
         },
         'list-anims': {
             'desc': 'List available animations',
             'args': [],
-            'opts': {'search': None}
+            'opts': {'search': None, 'duration': False}
         },
         'list-groups': {
             'desc': 'List available animation groups',
             'args': [],
-            'opts': {'search': None}
+            'opts': {'search': None, 'duration': False}
         },
         'list-sounds': {
             'desc': 'List available sounds',
@@ -1407,6 +1537,8 @@ class CommandParser:
         print('  python3 cozmo_controller.py "say Hello effect=cozmo"')
         print('  python3 cozmo_controller.py "animate anim_bored_01"')
         print('  python3 cozmo_controller.py "anim-group CodeLabChicken"')
+        print('  python3 cozmo_controller.py "list-anims duration=true"')
+        print('  python3 cozmo_controller.py "list-groups search=dance duration=true"')
         print('  python3 cozmo_controller.py "head up" "head middle" "head down"')
         print('  python3 cozmo_controller.py "list-sounds search=meow"')
         print('  python3 cozmo_controller.py "play-sound name=meow"')
@@ -1679,22 +1811,26 @@ def execute_command(controller, cmd, args, opts):
     elif cmd == 'animate':
         name = args[0]
         async_mode = opts.get('async', False)
-        wait = float(opts.get('wait', 2.0))
+        wait_val = opts.get('wait')
+        wait = float(wait_val) if wait_val is not None else None
         return controller.play_animation(name, async_mode=async_mode, wait=wait)
     
     elif cmd == 'anim-group':
         group = args[0]
         async_mode = opts.get('async', False)
-        wait = float(opts.get('wait', 2.0))
+        wait_val = opts.get('wait')
+        wait = float(wait_val) if wait_val is not None else None
         return controller.play_anim_group(group, async_mode=async_mode, wait=wait)
     
     elif cmd == 'list-anims':
         search = opts.get('search')
-        return controller.list_animations(search)
+        show_duration = opts.get('duration', False)
+        return controller.list_animations(search, show_duration=show_duration)
     
     elif cmd == 'list-groups':
         search = opts.get('search')
-        return controller.list_animation_groups(search)
+        show_duration = opts.get('duration', False)
+        return controller.list_animation_groups(search, show_duration=show_duration)
     
     elif cmd == 'list-sounds':
         search = opts.get('search')
