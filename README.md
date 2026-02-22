@@ -123,7 +123,7 @@ During development, several bugs were discovered in pycozmo that prevented prope
 
 ### Download Assets
 
-On first run, pycozmo will download Cozmo assets (~500MB) to `~/.pycozmo/assets/`.
+On first run, pycozmo will download Cozmo assets (~500MB) to `~/.pycozmo/assets/`. The incuded script pycozmo_resources.py does this also.
 
 ---
 
