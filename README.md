@@ -333,9 +333,10 @@ set name Cozmo
 for i in 1..$rounds
   say Round $i for $name
   
-  play-sound name=music 
-  anim-group DanceMambo 
-  
+  play-sound name=music
+  sleep 1
+  anim-group DanceMambo wait=20
+  sleep 1
   
   # Wait for animation
   lights color=blue
