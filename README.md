@@ -223,7 +223,7 @@ python3 cozmo_controller.py --script myscript.txt
 
 **Voice Effects:**
 - `effect=normal` (default) - Standard TTS voice
-- `effect=duck` - Donald Duck-like effect (higher pitch, faster)
+- `effect=duck` - Duck-like effect (higher pitch, faster)
 
 Requires sox: `sudo apt install sox`
 
